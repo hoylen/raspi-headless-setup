@@ -329,5 +329,4 @@ it should be kept confidential.
 
 ## See also
 
-- [GitHub repository](https://github.com/hoylen/raspberry-pi-utils)
-  for raspberry-pi-utils.
+- GitHub repository for [raspi-headless-setup](https://github.com/hoylen/raspi-headless-setup).
