@@ -74,12 +74,12 @@ This program can configure:
 
     Set the timezone. Timezone names are in the form of
     "Area/Location" and are case sensitive.
-    
+
     The timezone names should be from the [tz
     database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
     For a list of available timezones, on the Raspberry Pi run:
     `timedatectl list-timezones`
-    
+
     This program tries to determine a default value from the local
     computer. If it is not set, the Raspberry Pi's default value is
     British Standard Time.
@@ -87,14 +87,23 @@ This program can configure:
 - `-l | --locale` locale
 
     Set the locale.
-    
+
     For available locale names, look inside _/etc/locale.gen_ on the
     Raspberry Pi.
-    
+
     This program tries to determine a default value from the local
     computer. If it is not set, the Raspberry Pi's default value is
     "en_GB.UTF-8".
-    
+
+- `--no-locale`
+
+    Do not attempt to set the locale.
+
+    Leave the locale unchanged (en_GB is the default on the Raspberry
+    Pi).  This option can be useful for quick testing, because setting
+    the locale takes the most time when the Raspberry Pi boots for the
+    first time (about an extra 1.5 minutes).
+
 #### Wi-Fi options
 
 - `-c | --country` code
@@ -110,7 +119,7 @@ This program can configure:
 
     The plaintext version of the Wi-Fi passphrase.  A WPA-PSK Wi-Fi
     passphrase must be at least 8 characters long.
-    
+
     For better security, provide the passphrase in a file with the
     `-S` option.
 
@@ -137,7 +146,7 @@ This program can configure:
 
     provided the VNC password on the command line. It must be between
     6 to 8 characters long.
-    
+
     This program does not prompt for the VNC password, but will use
     the default value of "password" if a VNC password is not provided.
 
@@ -295,7 +304,7 @@ Possible causes:
 - The Raspberry Pi is not connected to the network:
 
     - It does not have hardware support for Wi-Fi;
-    
+
     - The Wi-Fi password is incorrect;
 
     - The configured SSID is only available on 5 GHz Wi-Fi and the

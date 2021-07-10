@@ -235,6 +235,11 @@ do
       shift # past option
       shift # past argument
       ;;
+    --no-locale)
+      LOCALE=
+      shift # past option
+      ;;
+
     -c|--country)
       if [ $# -lt 2 ]; then
         echo "$EXE: usage error: \"$1\" missing value" >&2
@@ -266,7 +271,7 @@ do
       shift # past option
       shift # past argument
       ;;
-      
+
     -d|--psk)
       if [ $# -lt 2 ]; then
         echo "$EXE: usage error: \"$1\" missing value" >&2
@@ -381,13 +386,14 @@ EOF
   if [ -n "$DEFAULT_PI_PUBKEY" ]; then
     echo "                                 (default: $DEFAULT_PI_PUBKEY)"
   fi
-  
+
   cat <<EOF
 
   -n | --hostname NAME           Pi's hostname (default: $DEFAULT_HOSTNAME)
 
   -t | --timezone TZ             set timezone$HELP_DTZ
   -l | --locale LOCALE           set locale$HELP_LOC
+       --no-locale               do not set the locale for a quicker first boot
 
   -c | --country XX              two letter ISO 3166-1 country$HELP_CTRY
   -s | --ssid-passphrase SECRET  Wi-Fi plaintext passphrase
@@ -498,7 +504,7 @@ if [ -z "$NO_WIFI" ]; then
 
   if [ -n "$WIFI_PASSPHRASE_PSK" ]; then
     # Expect PSK is the only one: use it
-    
+
     if [ -n "$WIFI_PASSPHRASE_FILE" ] || [ -n "$WIFI_PASSPHRASE" ] ; then
       echo "$EXE: usage error: multiple Wi-Fi passwords provided" >&2
       exit 2
@@ -511,7 +517,7 @@ if [ -z "$NO_WIFI" ]; then
 
   elif [ -n "$WIFI_PASSPHRASE_FILE" ]; then
     # Expect password file is the only one: load it
-    
+
     if [ -n "$WIFI_PASSPHRASE_TEXT" ]; then
       echo "$EXE: usage error: multiple Wi-Fi passwords provided" >&2
       exit 2
@@ -532,10 +538,10 @@ if [ -z "$NO_WIFI" ]; then
   # WIFI_PASSPHRASE_PSK will have a value: never both, but possibly
   # neither. If neither, this script will later prompt for the
   # plaintext passphrase.
-  
+
 else
   # Wi-Fi will not be configured
-  
+
   if [ -n "$WIFI_PASSPHRASE_TEXT" ] \
        || [ -n "$WIFI_PASSPHRASE_FILE" ] \
        || [ -n "$WIFI_PASSPHRASE_PSK" ] ; then
@@ -549,7 +555,7 @@ fi
 if [ -z "$NO_VNC" ]; then
   if [ -n "$VNC_PASSWORD_FILE" ]; then
     # Password from file: read it
-  
+
     if [ -n "$VNC_PASSWORD" ] ; then
       echo "$EXE: usage error: multiple VNC passwords provided" >&2
       exit 2
@@ -564,7 +570,7 @@ if [ -z "$NO_VNC" ]; then
       echo "$EXE: error: no VNC password in file: $VNC_PASSWORD_FILE" >&2
       exit 2
     fi
-    
+
   elif [ -n "$VNC_PASSWORD" ]; then
     # Password from command line: use it
 
@@ -578,7 +584,7 @@ if [ -z "$NO_VNC" ]; then
     VNC_PASSWORD=$DEFAULT_VNC_PASSWORD
   fi
   # At this point VNC_PASSWORD will always have a value.
-  
+
 else
   if [ -n "$VNC_PASSWORD" ] ||  [ -n "$VNC_PASSWORD_FILE" ] ; then
     echo "$EXE: usage error: VNC password provided when using --no-vnc" >&2
@@ -725,7 +731,7 @@ fi
 # Configure Wi-Fi
 
 if [ -z "$NO_WIFI" ]; then
- 
+
   #----------------
   # Get password
 
@@ -782,7 +788,7 @@ if [ -z "$NO_WIFI" ]; then
   fi
 
   # Create the wpa_supplicant.conf file
-  
+
   cat > "$WIFI_CONF" <<EOF
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
@@ -1017,7 +1023,7 @@ if [ -n "$LOCALE" ]; then
 LOCALE='$LOCALE'
 
 if LOCALE_LINE="\$(grep "^\$LOCALE " /usr/share/i18n/SUPPORTED)"; then
-  # Set locale
+  # Locale is supported
 
   ENCODING="\$(echo \$LOCALE_LINE | cut -f2 -d " ")"
 
@@ -1129,6 +1135,11 @@ fi
 
 cat >> "$INIT_FILE" <<EOF
 #----------------
+# Other
+
+#ADD-ADDITIONAL-COMMANDS-HERE
+
+#----------------
 # Clean up
 
 # IMPORTANT: REMOVE THIS SCRIPT, SINCE IT CONTAINS PASSWORDS AND PASSPHRASES
@@ -1174,6 +1185,6 @@ fi
 
 # Replace the cmdline.txt file with the modified version
 mv "$NEW" "$CMD_FILE"
-  
+
 #----------------------------------------------------------------
 #EOF
