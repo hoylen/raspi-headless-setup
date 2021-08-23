@@ -18,7 +18,7 @@
 #================================================================
 
 PROGRAM='raspi-headless-setup'
-VERSION='1.1.0'
+VERSION='1.2.0'
 
 EXE=$(basename "$0" .sh)
 EXE_EXT=$(basename "$0")
@@ -131,6 +131,7 @@ set -e
 PI_PASSWORD=
 PI_PASSWORD_FILE=
 PI_SSH_PUBKEY="$DEFAULT_PI_PUBKEY"
+ALLOW_SSH_PASSWORD=yes
 
 HOSTNAME="$DEFAULT_HOSTNAME"
 
@@ -191,6 +192,10 @@ do
       PI_SSH_PUBKEY="$2"
       shift # past option
       shift # past argument
+      ;;
+    -K|--pubkey-only)
+      ALLOW_SSH_PASSWORD=
+      shift
       ;;
     --no-pubkey)
       PI_SSH_PUBKEY=
@@ -379,8 +384,7 @@ Options:
   -p | --pi-password SECRET      pi user account password (default: $DEFAULT_PI_PASSWORD)
   -P | --pi-password-file FILE   read pi user account password from a file
 
-       --no-pubkey               do not configure .ssh/authorized_keys
-  -k | --pi-pubkey FILE          configure .ssh/authorized_keys for pi user
+  -k | --pi-pubkey FILE          configure .ssh/authorized_keys for the pi user
 EOF
 
   if [ -n "$DEFAULT_PI_PUBKEY" ]; then
@@ -388,6 +392,8 @@ EOF
   fi
 
   cat <<EOF
+  -K | --pubkey-only             prohibit SSH authentication with passwords
+       --no-pubkey               do not configure ~pi/.ssh/authorized_keys
 
   -n | --hostname NAME           Pi's hostname (default: $DEFAULT_HOSTNAME)
 
@@ -456,11 +462,23 @@ elif [ -z "$PI_PASSWORD" ]; then
 fi
 # At this point PI_PASSWORD will always have a value
 
-# Pi user public key
+# SSH public key for the "pi" user
 
-if [ -n "$PI_SSH_PUBKEY" ] && [ ! -r "$PI_SSH_PUBKEY" ]; then
-  echo "$EXE: usage error: SSH public key file not found: $PI_SSH_PUBKEY" >&2
-  exit 2
+if [ -n "$PI_SSH_PUBKEY" ]; then
+  # A SSH public key is provided for the "pi" user
+
+  if [ ! -r "$PI_SSH_PUBKEY" ]; then
+    echo "$EXE: usage error: SSH public key file not found: $PI_SSH_PUBKEY" >&2
+    exit 2
+  fi
+
+else
+  # No SSH public key provided. Therefore, cannot disable SSH passwords.
+
+  if [ -z "$ALLOW_SSH_PASSWORD" ]; then
+    echo "$EXE: usage error: public key required to disable SSH passwords" >&2
+    exit 2
+  fi
 fi
 
 # Hostname
@@ -916,12 +934,15 @@ EOF
 
 cat >> "$INIT_FILE" <<EOF
 #----------------
-# Default "pi" user account: password
+# Default user account: "pi"
 
 USERNAME='pi'
 PASSWORD='$PI_PASSWORD'
 
+# Any errors are outputted to this file
 ERRORS="/home/\$USERNAME/$(basename $INIT_NAME .sh).errors"
+
+# Default user account: set password
 
 echo "\$USERNAME:\$PASSWORD" | chpasswd
 
@@ -933,23 +954,37 @@ if [ -n "$PI_SSH_PUBKEY" ]; then
   fi
 
   cat >> "$INIT_FILE" <<EOF
-#----------------
-# Default "pi" user account: authorized keys file with SSH public key
+# Default user account: populate authorized keys file with SSH public key
 
 if [ ! -e /home/\$USERNAME/.ssh ]; then
+  # Create .ssh directory
   mkdir /home/\$USERNAME/.ssh
   chown \$USERNAME: /home/\$USERNAME/.ssh
   chmod 755 /home/\$USERNAME/.ssh
 fi
 
+# Populate .ssh/authorized_keys file (append, just in case it already exists)
+
 cat >> /home/\$USERNAME/.ssh/authorized_keys <<PUBKEY_EOF
 $(cat "$PI_SSH_PUBKEY")
 PUBKEY_EOF
-
 chown \$USERNAME: /home/\$USERNAME/.ssh/authorized_keys
 chmod 644 /home/\$USERNAME/.ssh/authorized_keys
 
 EOF
+
+  if [ -z "$ALLOW_SSH_PASSWORD" ]; then
+      cat >> "$INIT_FILE" <<EOF
+#----------------
+# Disable passwords for SSH authentication (i.e. only use SSH public keys)
+
+sed -i -E \\
+  's/^ *\#? *PasswordAuthentication .*$/PasswordAuthentication no/' \\
+  /etc/ssh/sshd_config
+
+EOF
+  fi
+
 else
   if [ -n "$ALREADY_BOOTED" ]; then
     # The Raspberry Pi has already been booted
@@ -1142,7 +1177,7 @@ cat >> "$INIT_FILE" <<EOF
 #----------------
 # Clean up
 
-# IMPORTANT: REMOVE THIS SCRIPT, SINCE IT CONTAINS PASSWORDS AND PASSPHRASES
+# IMPORTANT: REMOVE THIS SCRIPT AFTER RUNNING, SINCE IT CONTAINS PASSWORDS
 
 rm -f /boot/$INIT_NAME
 

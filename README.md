@@ -56,12 +56,27 @@ This program can configure:
 
     Create or add the contents of the _pubkey_file_ to the
     _.ssh/authorized_keys_ file for the "pi" user account.  By
-    default, it will use the _~/.ssh/id_rsa.pub_ file, if it exists
-    and `--nopubkey` has not been specified.
+    default, it will use the _~/.ssh/id_rsa.pub_ file of the account
+    that invoked it, if it exists and `--nopubkey` has not been
+    specified.
+
+- `-K | --pubkey-only`
+
+    Prohibit the use of passwords for SSH authentication.  By default,
+    either passwords or (if a public key is provided) SSH public keys
+    can be used for authentication.  This option cannot be used if
+    there is no public key configured for the "pi" user account
+    (i.e. it cannot be used if `--no-pubkey` is used, or no public key
+    has been provided via the `--pi-ssh-pubkey` option or its default
+    value). Use of this option improves security.
 
 - `--no-pubkey`
 
-    Do not configure the _.ssh/authorized_keys_ file for the "pi" user account.
+    Do not configure the _.ssh/authorized_keys_ file for the "pi" user
+    account.  If there is a default public key file, this option will
+    ensure it will not be used, because without it the authorized keys
+    file will be configured using that default file, even though the
+    `--pi-ssh-pubkey` was not specified.
 
 #### Other defaults
 
