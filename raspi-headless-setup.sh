@@ -521,7 +521,7 @@ if [ -z "$NO_WIFI" ]; then
   fi
 
   if [ -n "$WIFI_PASSPHRASE_PSK" ]; then
-    # Expect PSK is the only one: use it
+    # Expect Wi-Fi PSK is the only one: check and use it
 
     if [ -n "$WIFI_PASSPHRASE_FILE" ] || [ -n "$WIFI_PASSPHRASE" ] ; then
       echo "$EXE: usage error: multiple Wi-Fi passwords provided" >&2
@@ -534,23 +534,33 @@ if [ -z "$NO_WIFI" ]; then
     fi
 
   elif [ -n "$WIFI_PASSPHRASE_FILE" ]; then
-    # Expect password file is the only one: load it
+    # Expect Wi-Fi password file is the only one: load it
 
     if [ -n "$WIFI_PASSPHRASE_TEXT" ]; then
       echo "$EXE: usage error: multiple Wi-Fi passwords provided" >&2
       exit 2
     fi
     if [ ! -r "$WIFI_PASSPHRASE_FILE" ]; then
-      echo "$EXE: error: cannot read password file: $PI_PASSWORD_FILE" >&2
+      echo "$EXE: error: cannot read password file: $WIFI_PASSPHRASE_FILE" >&2
       exit 2
     fi
 
+    # Load from file
     WIFI_PASSPHRASE_TEXT=$(head -1 "$WIFI_PASSPHRASE_FILE")
-    # It can be an empty string? If so, the following test is not required
-    # if [ -z "$WIFI_PASSPHRASE_TEXT" ]; then
-    #   echo "$EXE: error: no passphrase in file: $WIFI_PASSPHRASE_FILE" >&2
-    #   exit 2
-    # fi
+
+    # Check it
+    if ! echo "$WIFI_PASSPHRASE_TEXT" | grep -qE '^.{8}' ; then
+      echo "$EXE: error: Wi-Fi passphrase is too short (must be 8 characters or longer) from file: $WIFI_PASSPHRASE_FILE" >&2
+      exit 2
+    fi
+
+  elif [ -n "$WIFI_PASSPHRASE_TEXT" ]; then
+    # Wi-Fi password is the only one: check and use it
+    if ! echo "$WIFI_PASSPHRASE_TEXT" | grep -qE '^.{8}' ; then
+      echo "$EXE: error: Wi-Fi passphrase is too short (must be 8 characters or longer)" >&2
+      exit 2
+    fi
+
   fi
   # At this point, **at most one** of WIFI_PASSPHRASE_TEXT or
   # WIFI_PASSPHRASE_PSK will have a value: never both, but possibly
@@ -753,13 +763,13 @@ if [ -z "$NO_WIFI" ]; then
   #----------------
   # Get password
 
-  if [ -n "$WIFI_PASSPHRASE_TEXT" ] && [ -n "$WIFI_PASSPHRASE_PSK" ]; then
-    # Prompt for the plaintext Wi-Fi password
+  if [ -z "$WIFI_PASSPHRASE_TEXT" ] && [ -z "$WIFI_PASSPHRASE_PSK" ]; then
+    # No Wi-Fi passphrase (plaintext or PSK): prompt for the plaintext
 
     until [ -n "$WIFI_PASSPHRASE_TEXT" ];
     do
       # Note: -s works in Bash and Zsh, but not in all shells
-      if ! read -s -p "Wi-Fi password for \"$WIFI_SSID\": " \
+      if ! read -s -p "Wi-Fi password for SSID \"$WIFI_SSID\": " \
            WIFI_PASSPHRASE_TEXT ; then
         echo
         echo "$EXE: aborted" >&2
@@ -769,7 +779,7 @@ if [ -z "$NO_WIFI" ]; then
       echo
 
       if ! (echo "$WIFI_PASSPHRASE_TEXT" | grep -q -E ^.{8}); then
-        echo "Error: wrong length (must be 8 characters or longer)">&2
+        echo "Error: Wi-Fi passphrase is too short (must be 8 characters or longer)">&2
         WIFI_PASSPHRASE_TEXT=
       fi
     done
@@ -1169,10 +1179,9 @@ else
 fi
 
 cat >> "$INIT_FILE" <<EOF
-#----------------
-# Other
 
-#ADD-ADDITIONAL-COMMANDS-HERE
+# NOTE: THE NETWORK IS NOT AVAILABLE WHEN THIS SCRIPT RUNS.
+# SO IT CANNOT RUN "apt update" OR SIMILAR COMMANDS.
 
 #----------------
 # Clean up

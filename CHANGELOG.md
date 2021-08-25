@@ -3,6 +3,7 @@
 ## 1.2.0
 
 - Added `--pubkey-only` option to disable SSH passwords for better security.
+- Fixed missing Wi-Fi passphrase not prompted for bug.
 
 ## 1.1.0
 
